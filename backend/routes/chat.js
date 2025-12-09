@@ -5,7 +5,9 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 require('dotenv').config();
 
 // Initialize Gemini API
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'AIzaSyCceqPokXTMFdEcLwZoDD20OhrvSln8YAY');
+const apiKey = process.env.GEMINI_API_KEY;
+console.log('Gemini API Key loaded:', apiKey ? `${apiKey.substring(0, 10)}...` : 'NOT FOUND');
+const genAI = new GoogleGenerativeAI(apiKey);
 
 // GET /api/chat/:userId - Get chat history
 router.get('/:userId', async (req, res) => {
@@ -113,21 +115,26 @@ router.post('/:userId', async (req, res) => {
         
         contextPrompt += `Provide helpful, professional, and encouraging career advice. Be concise but informative.`;
 
-        console.log('Calling Gemini API...');
-
-        // Call Gemini API with simpler approach
-        const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
-        
+        console.log('=== GEMINI API DEBUG ===');
+        console.log('API Key being used:', apiKey ? `${apiKey.substring(0, 15)}...${apiKey.substring(apiKey.length - 5)}` : 'NOT FOUND');
+        console.log('API Key length:', apiKey ? apiKey.length : 0);
+        console.log('Calling Gemini API with model: gemini-2.5-flash');
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+     
         // For first message or simple conversation
         const fullPrompt = existingMessages.length <= 1 
             ? `${contextPrompt}\n\nUser's question: ${message}`
             : message;
 
+        console.log('Prompt length:', fullPrompt.length);
+        
         const result = await model.generateContent(fullPrompt);
         const response = await result.response;
         const aiResponse = response.text();
 
-        console.log('AI Response received:', aiResponse.substring(0, 100) + '...');
+        console.log('AI Response received successfully');
+        console.log('Response preview:', aiResponse.substring(0, 100) + '...');
+        console.log('=== END DEBUG ===');
 
         // Add AI response to history
         const assistantMessage = {

@@ -89,8 +89,8 @@ router.get('/:userId', async (req, res) => {
 
         // Fetch recommended jobs from recommendations table or match based on skills
         const recsRes = await db.query(`
-            SELECT r.*, j.job_title, j.company_name, j.location, j.job_type, 
-                   j.salary_range, j.description, j.required_skills
+            SELECT r.*, j.job_title, j.company_name, j.job_location, j.job_type, 
+                   j.salary_min, j.salary_max, j.job_description, j.required_skills
             FROM recommendations r
             JOIN job_postings j ON r.entity_id = j.job_id
             WHERE r.user_id = $1 AND r.entity_type = 'job'
@@ -105,7 +105,12 @@ router.get('/:userId', async (req, res) => {
         } else {
             // If no recommendations, fetch recent jobs and calculate match score
             const recentJobsRes = await db.query(
-                'SELECT * FROM job_postings WHERE status = \'open\' ORDER BY posted_date DESC LIMIT 10'
+                `SELECT job_id, job_title, company_name, job_location, job_type, 
+                        salary_min, salary_max, job_description, required_skills, posted_date 
+                 FROM job_postings 
+                 WHERE is_active = true 
+                 ORDER BY posted_date DESC 
+                 LIMIT 10`
             );
             
             recommendedJobs = recentJobsRes.rows.map(job => {
@@ -113,11 +118,25 @@ router.get('/:userId', async (req, res) => {
                 let matchScore = 0.5; // Base score
                 
                 if (job.required_skills && userSkills.length > 0) {
-                    const jobSkills = job.required_skills.toLowerCase().split(',').map(s => s.trim());
-                    const matchedSkills = jobSkills.filter(js => 
-                        userSkills.some(us => us.includes(js) || js.includes(us))
-                    );
-                    matchScore = Math.min(0.95, 0.5 + (matchedSkills.length / jobSkills.length) * 0.5);
+                    // Parse required_skills if it's a JSONB array
+                    let jobSkills = [];
+                    try {
+                        if (typeof job.required_skills === 'string') {
+                            jobSkills = JSON.parse(job.required_skills);
+                        } else if (Array.isArray(job.required_skills)) {
+                            jobSkills = job.required_skills;
+                        }
+                        
+                        if (Array.isArray(jobSkills)) {
+                            jobSkills = jobSkills.map(s => s.toLowerCase());
+                            const matchedSkills = jobSkills.filter(js => 
+                                userSkills.some(us => us.includes(js) || js.includes(us))
+                            );
+                            matchScore = Math.min(0.95, 0.5 + (matchedSkills.length / jobSkills.length) * 0.5);
+                        }
+                    } catch (err) {
+                        console.error('Error parsing required_skills:', err);
+                    }
                 }
                 
                 return {
@@ -136,17 +155,41 @@ router.get('/:userId', async (req, res) => {
             interviewsScheduled,
             matchRanking,
             skillsCount: skillsRes.rows.length,
-            recommendedJobs: recommendedJobs.map(job => ({
-                id: job.job_id || job.entity_id,
-                title: job.job_title,
-                company: job.company_name,
-                location: job.location,
-                jobType: job.job_type,
-                salary: job.salary_range,
-                description: job.description,
-                requiredSkills: job.required_skills,
-                matchScore: Math.round((job.match_score || 0.5) * 100)
-            }))
+            recommendedJobs: recommendedJobs.map(job => {
+                // Format salary range
+                let salary = 'Not specified';
+                if (job.salary_min && job.salary_max) {
+                    salary = `$${job.salary_min} - $${job.salary_max}`;
+                } else if (job.salary_min) {
+                    salary = `$${job.salary_min}+`;
+                }
+                
+                // Format required skills
+                let requiredSkills = '';
+                if (job.required_skills) {
+                    try {
+                        if (typeof job.required_skills === 'string') {
+                            requiredSkills = job.required_skills;
+                        } else if (Array.isArray(job.required_skills)) {
+                            requiredSkills = job.required_skills.join(', ');
+                        }
+                    } catch (err) {
+                        console.error('Error formatting required_skills:', err);
+                    }
+                }
+                
+                return {
+                    id: job.job_id || job.entity_id,
+                    title: job.job_title,
+                    company: job.company_name,
+                    location: job.job_location || 'Remote',
+                    jobType: job.job_type || 'full_time',
+                    salary: salary,
+                    description: job.job_description,
+                    requiredSkills: requiredSkills,
+                    matchScore: Math.round((job.match_score || 0.5) * 100)
+                };
+            })
         };
 
         console.log('Dashboard data:', dashboardData);

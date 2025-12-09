@@ -58,7 +58,7 @@ router.get('/:userId', async (req, res) => {
             last_name: user.last_name,
             email: user.email,
             phone_number: user.phone_number,
-            date_of_birth: user.date_of_birth,
+            date_of_birth: user.date_of_birth ? new Date(user.date_of_birth).toISOString().split('T')[0] : null,
             current_city: user.current_city,
             bio: user.bio,
             linkedin_url: user.linkedin_url,
