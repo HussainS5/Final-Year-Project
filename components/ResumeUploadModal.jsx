@@ -68,102 +68,80 @@ export function ResumeUploadModal({ open, onOpenChange, onUploadSuccess }) {
   };
 
   const handleUpload = async () => {
-    if (!file) return;
+    if (!file || !user?.user_id) return;
 
     setUploading(true);
     setUploadProgress(0);
 
     try {
-      const progressInterval = setInterval(() => {
-        setUploadProgress((prev) => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return 90;
-          }
-          return prev + 10;
+      // Step 1: Upload file to Supabase Storage
+      setUploadProgress(10);
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.user_id}/${Date.now()}.${fileExt}`;
+      const filePath = fileName; // Don't include 'resumes/' prefix, bucket is already 'resumes'
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('resumes')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
         });
-      }, 200);
 
-      const mockParsedData = {
-        name: user?.full_name || 'User',
-        email: 'john.doe@example.com',
-        phone: '+1 234 567 8900',
-        location: 'San Francisco, CA',
-        title: 'Senior Software Engineer',
-        experienceYears: 5,
-        bio: 'Experienced software engineer with a passion for building scalable applications.',
-        skills: ['JavaScript', 'React', 'Node.js', 'Python', 'AWS'],
-        education: [
-          {
-            degree: 'Bachelor of Science in Computer Science',
-            institution: 'Stanford University',
-            year: '2018',
-          },
-        ],
-        workExperience: [
-          {
-            title: 'Senior Software Engineer',
-            company: 'Tech Corp',
-            duration: '2020 - Present',
-            description: 'Leading development of cloud-based solutions',
-          },
-          {
-            title: 'Software Engineer',
-            company: 'StartUp Inc',
-            duration: '2018 - 2020',
-            description: 'Full-stack development',
-          },
-        ],
-      };
+      if (uploadError) throw uploadError;
 
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
+      setUploadProgress(30);
+
+      // Step 2: Create resume entry in database
+      const { data: resumeData, error: resumeError } = await supabase
+        .from('resumes')
         .insert([
           {
-            full_name: mockParsedData.name,
-            email: mockParsedData.email,
-            phone: mockParsedData.phone,
-            location: mockParsedData.location,
-            current_title: mockParsedData.title,
-            experience_years: mockParsedData.experienceYears,
-            bio: mockParsedData.bio,
-            skills: mockParsedData.skills,
-            education: mockParsedData.education,
-            work_experience: mockParsedData.workExperience,
+            user_id: user.user_id,
+            file_name: file.name,
+            file_path: filePath,
+            file_type: fileExt === 'pdf' ? 'pdf' : 'docx',
+            parsing_status: 'pending',
+            is_active: true,
           },
         ])
         .select()
-        .maybeSingle();
-
-      if (profileError) throw profileError;
-
-      const { error: resumeError } = await supabase.from('resumes').insert([
-        {
-          profile_id: profileData.id,
-          file_name: file.name,
-          file_size: file.size,
-          file_type: file.type,
-          file_url: '',
-          parsed_data: mockParsedData,
-          status: 'parsed',
-        },
-      ]);
+        .single();
 
       if (resumeError) throw resumeError;
 
-      clearInterval(progressInterval);
+      setUploadProgress(50);
+
+      // Step 3: Call backend parsing API
+      const parseResponse = await fetch('http://localhost:5000/api/resumes/parse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resume_id: resumeData.resume_id,
+          file_path: filePath,
+        }),
+      });
+
+      if (!parseResponse.ok) {
+        const error = await parseResponse.json();
+        throw new Error(error.error || 'Failed to parse resume');
+      }
+
+      setUploadProgress(80);
+
+      const parseResult = await parseResponse.json();
       setUploadProgress(100);
 
+      // Step 4: Open profile review modal with parsed data
       setTimeout(() => {
-        localStorage.setItem('currentProfileId', profileData.id);
-        onUploadSuccess?.(profileData);
+        onUploadSuccess?.(parseResult);
         onOpenChange(false);
         setFile(null);
         setUploadProgress(0);
       }, 500);
     } catch (error) {
       console.error('Upload error:', error);
-      alert('Error uploading resume. Please try again.');
+      alert(error.message || 'Error uploading resume. Please try again.');
+      setUploadProgress(0);
     } finally {
       setUploading(false);
     }

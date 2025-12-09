@@ -17,6 +17,12 @@ app.use('/api/skills', require('./routes/skills'));
 app.use('/api/jobs', require('./routes/jobs'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/chat', require('./routes/chat'));
+app.use('/api/resumes', require('./routes/resumes'));
+app.use('/api/users', require('./routes/users'));
+app.use('/api/education', require('./routes/education'));
+app.use('/api/work-experience', require('./routes/workExperience'));
+app.use('/api/user-skills', require('./routes/userSkills'));
+app.use('/api/skills-catalog', require('./routes/skillsCatalog'));
 
 // Test route
 app.get('/api/health', async (req, res) => {

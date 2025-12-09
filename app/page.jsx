@@ -7,14 +7,18 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { AnimatedCounter } from '@/components/AnimatedCounter';
 import { ResumeUploadModal } from '@/components/ResumeUploadModal';
+import { ProfileReviewModal } from '@/components/ProfileReviewModal';
 import { useAuth } from '@/components/AuthProvider';
 import { Footer } from '@/components/Footer';
 import Link from 'next/link';
 
 export default function Home() {
   const router = useRouter();
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, user } = useAuth();
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [parsedData, setParsedData] = useState(null);
+  const [resumeId, setResumeId] = useState(null);
 
   const stats = [
     { icon: Briefcase, label: 'Active Jobs', value: 12547, suffix: '+' },
@@ -22,8 +26,14 @@ export default function Home() {
     { icon: TrendingUp, label: 'Success Rate', value: 94, suffix: '%' },
   ];
 
-  const handleUploadSuccess = () => {
-    router.push('/profile');
+  const handleUploadSuccess = (result) => {
+    if (result && result.data) {
+      setParsedData(result.data);
+      setResumeId(result.resume_id);
+      setShowReviewModal(true);
+    } else {
+      router.push('/profile');
+    }
   };
 
   return (
@@ -142,6 +152,16 @@ export default function Home() {
         onOpenChange={setShowUploadModal}
         onUploadSuccess={handleUploadSuccess}
       />
+
+      {user && (
+        <ProfileReviewModal
+          open={showReviewModal}
+          onOpenChange={setShowReviewModal}
+          parsedData={parsedData}
+          userId={user.user_id}
+          resumeId={resumeId}
+        />
+      )}
 
       <Footer />
 
