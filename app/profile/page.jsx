@@ -445,7 +445,7 @@ export default function Profile() {
                     </div>
                   </label>
                 </div>
-                <p className="text-xs text-slate-400">Click to upload profile picture</p>
+                {/* <p className="text-xs text-slate-400">Click to upload profile picture</p> */}
 
                 {editing ? (
                   <div className="space-y-3">

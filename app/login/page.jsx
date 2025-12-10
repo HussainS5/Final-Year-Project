@@ -28,8 +28,8 @@ export default function Login() {
     try {
       const data = await api.login(email, password);
 
-      // Store user info
-      login(data.user);
+      // Store user info and session (with JWT)
+      login(data.user, data.session);
       router.push('/dashboard');
     } catch (error) {
       setError(error.message || 'Failed to sign in');

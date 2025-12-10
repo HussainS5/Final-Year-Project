@@ -42,7 +42,8 @@ export default function Signup() {
     try {
       const data = await api.signup(fullName, email, password);
 
-      login(data.user);
+      // Store user info and session (with JWT)
+      login(data.user, data.session);
       router.push('/dashboard');
     } catch (error) {
       setError(error.message || 'Failed to sign up');
