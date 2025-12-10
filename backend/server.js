@@ -5,7 +5,7 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const db = require('./config/db');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 app.use(cors());
 app.use(express.json());
@@ -24,6 +24,7 @@ app.use('/api/work-experience', require('./routes/workExperience'));
 app.use('/api/user-skills', require('./routes/userSkills'));
 app.use('/api/skills-catalog', require('./routes/skillsCatalog'));
 app.use('/api/ats', require('./routes/ats'));
+app.use('/api/email', require('./routes/email'));
 
 // Test route
 app.get('/api/health', async (req, res) => {

@@ -7,6 +7,12 @@
 
 # testing
 /coverage
+/tests/test-results/
+/tests/test-results.json
+/tests/test-results-html/
+/tests/report.txt
+/playwright-report/
+/test-results/
 
 # next.js
 /.next/

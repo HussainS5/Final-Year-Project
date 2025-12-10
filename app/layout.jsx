@@ -4,6 +4,7 @@ import { ThemeProvider } from '@/components/ThemeProvider';
 import { AuthProvider } from '@/components/AuthProvider';
 import { Navigation } from '@/components/Navigation';
 import { FloatingParticles } from '@/components/FloatingParticles';
+import { Toaster } from '@/components/ui/sonner';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -28,6 +29,7 @@ export default function RootLayout({ children }) {
                 {children}
               </main>
             </div>
+            <Toaster />
           </AuthProvider>
         </ThemeProvider>
       </body>

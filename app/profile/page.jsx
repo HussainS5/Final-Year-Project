@@ -22,6 +22,7 @@ import {
   DollarSign,
   Clock,
   CheckCircle,
+  Loader2,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -41,6 +42,7 @@ import { useAuth } from '@/components/AuthProvider';
 import { ResumeUploadModal } from '@/components/ResumeUploadModal';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
+import { Shield, CheckCircle2, XCircle } from 'lucide-react';
 
 export default function Profile() {
   const router = useRouter();
@@ -53,6 +55,7 @@ export default function Profile() {
   const [editedProfile, setEditedProfile] = useState(null);
   const [profilePictureError, setProfilePictureError] = useState(false);
   const [uploadingPicture, setUploadingPicture] = useState(false);
+  const [mfaEnabled, setMfaEnabled] = useState(false);
 
   // Helper function to validate profile picture URL
   const isValidImageUrl = (url) => {
@@ -76,8 +79,22 @@ export default function Profile() {
   useEffect(() => {
     if (user?.user_id) {
       loadProfile();
+      checkMfaStatus();
     }
   }, [user]);
+
+  const checkMfaStatus = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.user_metadata?.mfa_enabled) {
+        setMfaEnabled(true);
+      } else {
+        setMfaEnabled(false);
+      }
+    } catch (error) {
+      console.error('Error checking MFA status:', error);
+    }
+  };
 
   const mockProfile = {
     profile_picture: '',
@@ -314,6 +331,39 @@ export default function Profile() {
       ...prev,
       work_experience: newWorkExperience,
     }));
+  };
+
+  const handleEnableMfa = () => {
+    // Redirect to enable-2fa page
+    router.push('/enable-2fa');
+  };
+
+  const handleDisableMfa = async () => {
+    try {
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          mfa_enabled: false,
+          mfa_enabled_at: null,
+        }
+      });
+
+      if (error) {
+        toast.error('Failed to disable 2FA', {
+          description: error.message || 'Please try again later.',
+        });
+        return;
+      }
+
+      setMfaEnabled(false);
+      toast.success('2FA disabled successfully', {
+        description: 'Two-factor authentication has been removed from your account.',
+      });
+      await checkMfaStatus();
+    } catch (error) {
+      toast.error('An error occurred', {
+        description: error.message || 'Please try again later.',
+      });
+    }
   };
 
   if (loading) {
@@ -935,6 +985,63 @@ export default function Profile() {
                   ))
                 ) : (
                   <p className="text-slate-400">No education added yet</p>
+                )}
+              </div>
+            </Card>
+
+            {/* Two-Factor Authentication Section */}
+            <Card className="glass-card p-6 border-2 border-yellow-500/30">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-3">
+                  <Shield className="w-5 h-5 text-yellow-500" />
+                  <div>
+                    <h3 className="font-semibold text-white text-base">Two-Factor Authentication</h3>
+                    <p className="text-sm text-slate-400">
+                      {mfaEnabled 
+                        ? '2FA is currently enabled on your account' 
+                        : 'Add an extra layer of security to your account'}
+                    </p>
+                  </div>
+                </div>
+                {mfaEnabled && (
+                  <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
+                    <CheckCircle2 className="w-3 h-3 mr-1" />
+                    Enabled
+                  </Badge>
+                )}
+              </div>
+
+              <div className="space-y-4">
+                {mfaEnabled ? (
+                  <div className="space-y-3">
+                    <p className="text-slate-300 text-sm">
+                      Your account is protected with two-factor authentication. 
+                      You'll receive a verification code via email when signing in.
+                    </p>
+                    <Button
+                      onClick={handleDisableMfa}
+                      variant="outline"
+                      size="sm"
+                      className="border-red-500/30 hover:border-red-500 hover:bg-red-500/10 text-red-400"
+                    >
+                      <XCircle className="w-4 h-4 mr-2" />
+                      Disable 2FA
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-slate-300 text-sm">
+                      Protect your account by requiring a verification code sent to your email in addition to your password.
+                    </p>
+                    <Button
+                      onClick={handleEnableMfa}
+                      size="sm"
+                      className="bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-slate-950 font-semibold transition-all hover:scale-105"
+                    >
+                      <Shield className="w-4 h-4 mr-2" />
+                      Enable 2FA
+                    </Button>
+                  </div>
                 )}
               </div>
             </Card>

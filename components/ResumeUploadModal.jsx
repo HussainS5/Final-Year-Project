@@ -112,7 +112,7 @@ export function ResumeUploadModal({ open, onOpenChange, onUploadSuccess }) {
       setUploadProgress(50);
 
       // Step 3: Call backend parsing API
-      const parseResponse = await fetch('http://localhost:5000/api/resumes/parse', {
+      const parseResponse = await fetch('http://localhost:5001/api/resumes/parse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -25,7 +25,7 @@ export function AuthProvider({ children }) {
     // Helper function to fetch INTEGER user_id from backend by email
     const fetchUserIdByEmail = async (email) => {
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/auth/user-by-email/${encodeURIComponent(email)}`);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/auth/user-by-email/${encodeURIComponent(email)}`);
         if (response.ok) {
           const data = await response.json();
           return data.user_id; // INTEGER user_id from users table
@@ -88,6 +88,10 @@ export function AuthProvider({ children }) {
     setIsLoggedIn(false);
     setUser(null);
     setSession(null);
+    // Redirect to home page after logout
+    if (typeof window !== 'undefined') {
+      window.location.href = '/';
+    }
   };
 
   if (!mounted) {

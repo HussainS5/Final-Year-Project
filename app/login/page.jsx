@@ -28,9 +28,21 @@ export default function Login() {
     try {
       const data = await api.login(email, password);
 
-      // Store user info and session (with JWT)
-      login(data.user, data.session);
-      router.push('/dashboard');
+      // Check if user has 2FA enabled
+      const mfaEnabled = data.user?.user_metadata?.mfa_enabled || false;
+
+      if (mfaEnabled) {
+        // Store session temporarily and redirect to 2FA verification
+        sessionStorage.setItem('pending_2fa_session', JSON.stringify({
+          user: data.user,
+          session: data.session
+        }));
+        router.push(`/verify-2fa?email=${encodeURIComponent(email)}`);
+      } else {
+        // Store user info and session (with JWT)
+        login(data.user, data.session);
+        router.push('/dashboard');
+      }
     } catch (error) {
       setError(error.message || 'Failed to sign in');
     } finally {

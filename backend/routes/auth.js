@@ -130,13 +130,19 @@ router.post('/login', async (req, res) => {
           last_name: authData.user.user_metadata?.last_name || ''
         };
 
+        // Check if 2FA is enabled from user metadata
+        const mfaEnabled = authData.user.user_metadata?.mfa_enabled || false;
+
         res.json({
             message: 'Login successful',
             user: {
                 user_id: user.user_id,
                 email: user.email,
                 full_name: `${user.first_name} ${user.last_name}`.trim(),
-                current_job: user.bio ? user.bio.split('.')[0] : ''
+                current_job: user.bio ? user.bio.split('.')[0] : '',
+                user_metadata: {
+                  mfa_enabled: mfaEnabled
+                }
             },
             session: authData.session // Supabase session with JWT tokens
         });
