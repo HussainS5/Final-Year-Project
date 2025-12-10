@@ -17,6 +17,7 @@ export function Navigation() {
     { href: '/dashboard', label: 'Dashboard' },
     { href: '/jobs', label: 'Jobs' },
     { href: '/skills', label: 'Skills' },
+    { href: '/ats', label: 'ATS' },
     { href: '/chat', label: 'AI Chat' },
     { href: '/profile', label: 'Profile' },
   ];

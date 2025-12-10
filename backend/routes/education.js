@@ -38,7 +38,14 @@ router.post('/', async (req, res) => {
     // Replace missing dates with current date to satisfy DATE columns
     const today = new Date().toISOString().split('T')[0];
     const startDateValue = start_date || today;
-    const endDateValue = end_date || today;
+    
+    // Set end_date to today if it's null, undefined, string "null", or if is_current is true
+    let endDateValue;
+    if (is_current || !end_date || end_date === 'null' || end_date === null) {
+      endDateValue = today;
+    } else {
+      endDateValue = end_date;
+    }
 
     const result = await db.query(
       `INSERT INTO education (user_id, degree_type, degree_title, institution_name, 

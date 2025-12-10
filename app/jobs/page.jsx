@@ -162,25 +162,24 @@ export default function Jobs() {
                 {jobs.map((job, index) => (
                   <Card
                     key={job.id}
-                    className="glass-card p-6 hover:scale-[1.01] transition-all duration-300 group hover:shadow-xl hover:shadow-yellow-500/10"
+                    className="relative glass-card p-6 hover:scale-[1.01] transition-all duration-300 group hover:shadow-xl hover:shadow-yellow-500/10"
                     style={{
                       animation: `fadeInUp 0.5s ease-out ${index * 0.05}s both`,
                     }}
                   >
-                    <div className="flex flex-col lg:flex-row lg:items-start gap-4">
+                    <Badge className={`absolute top-4 right-4 ${getMatchColor(job.matchScore)} font-semibold px-3 py-1`}>
+                      <Star className="w-3 h-3 mr-1" />
+                      {job.matchScore}% Match
+                    </Badge>
+                    <div className="flex flex-col lg:flex-row lg:items-center gap-4">
                       <div className="flex-1 space-y-3">
-                        <div className="flex items-start justify-between">
+                        <div className="flex items-start justify-between lg:items-center">
                           <div>
                             <h3 className="text-xl font-semibold text-white group-hover:text-yellow-400 transition-colors">
                               {job.title}
                             </h3>
                             <p className="text-slate-400 font-medium">{job.company}</p>
                           </div>
-
-                          <Badge className={`${getMatchColor(job.matchScore)} font-semibold px-3 py-1`}>
-                            <Star className="w-3 h-3 mr-1" />
-                            {job.matchScore}% Match
-                          </Badge>
                         </div>
 
                         <div className="flex flex-wrap gap-3 text-sm text-slate-400">
@@ -217,24 +216,14 @@ export default function Jobs() {
                         </div>
                       </div>
 
-                      <div className="lg:w-32 flex lg:flex-col gap-2">
-                        <div className="relative h-2 lg:h-24 lg:w-2 flex-1 lg:flex-none bg-slate-800 rounded-full overflow-hidden">
-                          <div
-                            className={`absolute ${getProgressColor(job.matchScore)} rounded-full transition-all duration-1000 ease-out`}
-                            style={{
-                              width: '100%',
-                              height: `${job.matchScore}%`,
-                              bottom: 0,
-                            }}
-                          />
-                        </div>
+                      <div className="w-full lg:w-48 flex flex-col items-stretch gap-3 lg:items-end lg:text-right">
                         <Button
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
                             router.push(`/jobs/${job.id}`);
                           }}
-                          className="bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-slate-950 font-semibold hover:scale-105 transition-all"
+                          className="bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-slate-950 font-semibold hover:scale-105 transition-all w-full max-w-xs"
                         >
                           Apply Now
                         </Button>

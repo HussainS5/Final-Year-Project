@@ -47,3 +47,5 @@ pnpm-lock.yaml
 
 # backend build
 dist/
+
+*.md

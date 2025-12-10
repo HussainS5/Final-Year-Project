@@ -54,16 +54,52 @@ router.get('/:userId', async (req, res) => {
             value: s.level
         }));
 
+        // Latest ATS report (stored, no new Gemini call)
+        const atsRes = await db.query(
+            `SELECT score, summary, strengths, gaps, recommendations, keywords_to_add, breakdown, model_used, created_at
+             FROM ats_reports
+             WHERE user_id = $1
+             ORDER BY created_at DESC
+             LIMIT 1`,
+            [userId]
+        );
+
+        let atsReport = null;
+        if (atsRes.rows.length > 0) {
+            const row = atsRes.rows[0];
+            atsReport = {
+                score: Number(row.score) || 0,
+                summary: row.summary || '',
+                strengths: Array.isArray(row.strengths) ? row.strengths : tryParseArray(row.strengths),
+                gaps: Array.isArray(row.gaps) ? row.gaps : tryParseArray(row.gaps),
+                recommendations: Array.isArray(row.recommendations) ? row.recommendations : tryParseArray(row.recommendations),
+                keywordsToAdd: Array.isArray(row.keywords_to_add) ? row.keywords_to_add : tryParseArray(row.keywords_to_add),
+                breakdown: row.breakdown || {},
+                modelUsed: row.model_used || '',
+                createdAt: row.created_at,
+            };
+        }
+
         res.json({
             strengths,
             gaps,
-            radarData
+            radarData,
+            atsReport,
         });
     } catch (err) {
         console.error('Error fetching skills:', err);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
+
+function tryParseArray(val) {
+    try {
+        const parsed = typeof val === 'string' ? JSON.parse(val) : val;
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+        return [];
+    }
+}
 
 // POST /api/skills/:userId
 router.post('/:userId', async (req, res) => {

@@ -23,6 +23,7 @@ app.use('/api/education', require('./routes/education'));
 app.use('/api/work-experience', require('./routes/workExperience'));
 app.use('/api/user-skills', require('./routes/userSkills'));
 app.use('/api/skills-catalog', require('./routes/skillsCatalog'));
+app.use('/api/ats', require('./routes/ats'));
 
 // Test route
 app.get('/api/health', async (req, res) => {

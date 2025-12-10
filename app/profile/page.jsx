@@ -39,6 +39,8 @@ import {
 import { api } from '@/lib/api';
 import { useAuth } from '@/components/AuthProvider';
 import { ResumeUploadModal } from '@/components/ResumeUploadModal';
+import { supabase } from '@/lib/supabase';
+import { toast } from 'sonner';
 
 export default function Profile() {
   const router = useRouter();
@@ -50,6 +52,7 @@ export default function Profile() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [editedProfile, setEditedProfile] = useState(null);
   const [profilePictureError, setProfilePictureError] = useState(false);
+  const [uploadingPicture, setUploadingPicture] = useState(false);
 
   // Helper function to validate profile picture URL
   const isValidImageUrl = (url) => {
@@ -100,9 +103,11 @@ export default function Profile() {
       console.log('Loading profile for user_id:', user.user_id);
       const data = await api.getProfile(user.user_id);
       console.log('Profile data loaded:', data);
+      console.log('Profile picture URL:', data.profile_picture);
       setProfile(data);
       setEditedProfile(data);
-      setProfilePictureError(!isValidImageUrl(data.profile_picture));
+      // Reset error state when loading new profile
+      setProfilePictureError(false);
     } catch (error) {
       console.error('Error loading profile:', error);
       setProfile(mockProfile);
@@ -114,6 +119,79 @@ export default function Profile() {
 
   const handleUploadSuccess = () => {
     loadProfile();
+  };
+
+  const handleProfilePictureUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size should be less than 5MB');
+      return;
+    }
+
+    setUploadingPicture(true);
+    try {
+      const userId = profile.user_id || user?.user_id;
+      if (!userId) {
+        throw new Error('User ID not found');
+      }
+
+      // Create a unique file name
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${userId}_${Date.now()}.${fileExt}`;
+      const filePath = `profile-pictures/${fileName}`;
+
+      // Upload to Supabase Storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('resumes')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('resumes')
+        .getPublicUrl(filePath);
+
+      const publicUrl = urlData.publicUrl;
+
+      // Update profile with new picture URL
+      setProfilePictureError(false);
+      
+      if (editing) {
+        setEditedProfile(prev => ({
+          ...prev,
+          profile_picture: publicUrl
+        }));
+        toast.success('Profile picture uploaded! Remember to save changes.');
+      } else {
+        // Save immediately if not in edit mode
+        await api.updateProfile(userId, {
+          ...profile,
+          profile_picture: publicUrl
+        });
+        toast.success('Profile picture uploaded successfully!');
+        await loadProfile();
+      }
+    } catch (error) {
+      console.error('Error uploading profile picture:', error);
+      toast.error('Failed to upload profile picture. Please try again.');
+    } finally {
+      setUploadingPicture(false);
+    }
   };
 
   const handleEdit = () => {
@@ -333,36 +411,44 @@ export default function Profile() {
             <Card className="glass-card p-6">
               <div className="text-center space-y-4">
                 <div className="relative inline-block">
-                  <div className="w-32 h-32 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center mx-auto text-slate-950 text-4xl font-bold overflow-hidden">
-                    {isValidImageUrl(displayProfile.profile_picture) && !profilePictureError ? (
-                      <img
-                        src={displayProfile.profile_picture}
-                        alt="Profile"
-                        className="w-full h-full object-cover"
-                        onError={() => setProfilePictureError(true)}
-                      />
-                    ) : (
-                      getInitials(displayProfile.first_name, displayProfile.last_name)
-                    )}
-                  </div>
-                  {editing && (
-                    <button className="absolute bottom-0 right-0 w-10 h-10 rounded-full bg-yellow-500 hover:bg-yellow-600 flex items-center justify-center transition-all">
+                  <input
+                    type="file"
+                    id="profile-picture-upload"
+                    accept="image/*"
+                    onChange={handleProfilePictureUpload}
+                    className="hidden"
+                  />
+                  <label
+                    htmlFor="profile-picture-upload"
+                    className="cursor-pointer block"
+                  >
+                    <div className="w-32 h-32 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center mx-auto text-slate-950 text-4xl font-bold overflow-hidden hover:opacity-90 transition-opacity">
+                      {uploadingPicture ? (
+                        <div className="w-8 h-8 border-4 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                      ) : displayProfile.profile_picture && !profilePictureError ? (
+                        <img
+                          src={displayProfile.profile_picture}
+                          alt="Profile"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            console.error('Image failed to load:', displayProfile.profile_picture);
+                            setProfilePictureError(true);
+                          }}
+                          onLoad={() => console.log('Image loaded successfully:', displayProfile.profile_picture)}
+                        />
+                      ) : (
+                        getInitials(displayProfile.first_name, displayProfile.last_name)
+                      )}
+                    </div>
+                    <div className="absolute bottom-0 right-0 w-10 h-10 rounded-full bg-yellow-500 hover:bg-yellow-600 flex items-center justify-center transition-all shadow-lg">
                       <Camera className="w-5 h-5 text-slate-950" />
-                    </button>
-                  )}
+                    </div>
+                  </label>
                 </div>
+                <p className="text-xs text-slate-400">Click to upload profile picture</p>
 
                 {editing ? (
                   <div className="space-y-3">
-                    <div>
-                      <Label className="text-slate-300 text-sm">Profile Picture URL</Label>
-                      <Input
-                        value={displayProfile.profile_picture || ''}
-                        onChange={(e) => handleInputChange('profile_picture', e.target.value)}
-                        placeholder="https://example.com/image.jpg"
-                        className="glass-card text-white border-yellow-500/20 focus:border-yellow-500/50"
-                      />
-                    </div>
                     <div>
                       <Label className="text-slate-300 text-sm">First Name</Label>
                       <Input

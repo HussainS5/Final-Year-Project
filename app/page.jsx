@@ -74,16 +74,15 @@ export default function Home() {
               Upload Resume
             </Button>
 
-            <Link href="/dashboard">
-              <Button
-                size="lg"
-                variant="outline"
-                className="glass-card border-yellow-500/30 hover:border-yellow-500 hover:bg-yellow-500/10 text-foreground px-8 py-6 text-lg rounded-xl transition-all duration-300 hover:scale-105"
-              >
-                Explore Dashboard
-                <ArrowRight className="w-5 h-5 ml-2" />
-              </Button>
-            </Link>
+            <Button
+              size="lg"
+              variant="outline"
+              onClick={() => router.push(isLoggedIn ? '/dashboard' : '/signup')}
+              className="glass-card border-yellow-500/30 hover:border-yellow-500 hover:bg-yellow-500/10 text-foreground px-8 py-6 text-lg rounded-xl transition-all duration-300 hover:scale-105"
+            >
+              Explore Dashboard
+              <ArrowRight className="w-5 h-5 ml-2" />
+            </Button>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-16 animate-fade-in-up" style={{ animationDelay: '0.6s' }}>

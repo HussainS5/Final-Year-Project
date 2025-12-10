@@ -8,49 +8,49 @@ import Image from 'next/image';
 export default function About() {
   const teamMembers = [
     {
-      name: 'Mr. Anas Shahid',
-      role: 'Project Leader',
-      image: '/photos/Mr-Anas-Shahid-Leader .jpeg',
-      bio: 'Experienced project leader with expertise in AI-driven solutions.',
-      email: 'anas.shahid@example.com',
+      name: 'Ms. Yusra Kaleem',
+      role: 'Supervisor',
+      image: '/photos/Ms-Yusra-Kaleem-Lecturer-CS.jpg',
+      // bio: 'Computer science educator with focus on web technologies and databases.',
+      email: 'yusra.kaleem@nu.edu.pk',
       linkedin: '#',
       github: '#'
     },
     {
       name: 'Ms. Saeeda Kanwal',
-      role: 'AI Specialist',
+      role: 'Co-Supervisor',
       image: '/photos/Ms-Saeeda Kanwal-Doctor-AI.jpg',
-      bio: 'AI researcher specializing in machine learning and natural language processing.',
-      email: 'saeeda.kanwal@example.com',
+      // bio: 'AI researcher specializing in machine learning and natural language processing.',
+      email: 'saeeda.kanwal@nu.edu.pk',
       linkedin: '#',
       github: '#'
     },
     {
-      name: 'Ms. Yusra Kaleem',
-      role: 'Computer Science Lecturer',
-      image: '/photos/Ms-Yusra-Kaleem-Lecturer-CS.jpg',
-      bio: 'Computer science educator with focus on web technologies and databases.',
-      email: 'yusra.kaleem@example.com',
-      linkedin: '#',
-      github: '#'
+      name: 'Mr. Anas Shahid',
+      role: 'Project Leader',
+      image: '/photos/Mr-Anas-Shahid-Leader .jpeg',
+      // bio: 'Experienced project leader with expertise in AI-driven solutions.',
+      email: 'anashussain204@gmail.com',
+      linkedin: 'https://www.linkedin.com/in/anas-shahid-73a254248/',
+      github: 'https://github.com/AnasShahid204'
     },
     {
       name: 'Hussain Soomro',
       role: 'Team Member',
       image: '/photos/Hussain-Soomro-Member.jpg',
-      bio: 'Full-stack developer passionate about creating innovative solutions.',
-      email: 'hussain.soomro@example.com',
-      linkedin: '#',
-      github: '#'
+      // bio: 'Full-stack developer passionate about creating innovative solutions.',
+      email: 'soomrohussain15@gmail.com',
+      linkedin: 'https://www.linkedin.com/in/hussain-soomro-5998b6286',
+      github: 'https://github.com/HussainS5'
     },
     {
       name: 'Muhammad Ahmed',
       role: 'Team Member',
       image: '/photos/Muhammad-Ahmed-Member.jpeg',
-      bio: 'Software engineer specializing in backend development and APIs.',
-      email: 'muhammad.ahmed@example.com',
-      linkedin: '#',
-      github: '#'
+      // bio: 'Software engineer specializing in backend development and APIs.',
+      email: 'k224482@nu.edu.pk',
+      linkedin: 'https://www.linkedin.com/in/ahmed-khurram-386b5324a/',
+      github: 'https://github.com/Ahmed4482'
     }
   ];
 

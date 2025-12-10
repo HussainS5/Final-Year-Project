@@ -46,6 +46,7 @@ export function ProfileReviewModal({ open, onOpenChange, parsedData, userId, res
   const [editingExperience, setEditingExperience] = useState(null);
   const [skillSearch, setSkillSearch] = useState('');
   const [skillSuggestions, setSkillSuggestions] = useState([]);
+  const [validationErrors, setValidationErrors] = useState([]);
 
   useEffect(() => {
     if (parsedData && open) {
@@ -96,8 +97,43 @@ export function ProfileReviewModal({ open, onOpenChange, parsedData, userId, res
     }
   }, [parsedData, open]);
 
+  const validateDates = () => {
+    const errors = [];
+
+    // Validate education dates
+    education.forEach((edu, index) => {
+      if (!edu.start_date) {
+        errors.push(`Education ${index + 1} (${edu.degree_title || 'Untitled'}): Please fill in the start date`);
+      }
+      if (!edu.is_current && !edu.end_date) {
+        errors.push(`Education ${index + 1} (${edu.degree_title || 'Untitled'}): Please fill in the end date or check 'Currently Studying'`);
+      }
+    });
+
+    // Validate work experience dates
+    workExperience.forEach((exp, index) => {
+      if (!exp.start_date) {
+        errors.push(`Work Experience ${index + 1} (${exp.job_title || 'Untitled'}): Please fill in the start date`);
+      }
+      if (!exp.is_current && !exp.end_date) {
+        errors.push(`Work Experience ${index + 1} (${exp.job_title || 'Untitled'}): Please fill in the end date or check 'Currently Working'`);
+      }
+    });
+
+    return errors;
+  };
+
   const handleUpdateProfile = async () => {
     try {
+      // Validate dates before submission
+      const errors = validateDates();
+      if (errors.length > 0) {
+        setValidationErrors(errors);
+        toast.error('Please fill in all required date fields');
+        return;
+      }
+
+      setValidationErrors([]);
       setLoading(true);
 
       // API Call 1: Update user personal info
@@ -299,6 +335,17 @@ export function ProfileReviewModal({ open, onOpenChange, parsedData, userId, res
           </DialogDescription>
         </DialogHeader>
 
+        {validationErrors.length > 0 && (
+          <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30">
+            <h4 className="text-red-400 font-semibold mb-2">Please fix the following issues:</h4>
+            <ul className="list-disc list-inside space-y-1">
+              {validationErrors.map((error, index) => (
+                <li key={index} className="text-red-300 text-sm">{error}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <div className="space-y-6 py-4">
           {/* Section 1: Personal Information */}
           <Collapsible defaultOpen>
@@ -482,22 +529,30 @@ export function ProfileReviewModal({ open, onOpenChange, parsedData, userId, res
                   </div>
                   <div className="grid grid-cols-3 gap-3">
                     <div>
-                      <Label className="text-slate-300">Start Date</Label>
+                      <Label className="text-slate-300">
+                        Start Date <span className="text-red-400">*</span>
+                      </Label>
                       <Input
                         type="date"
                         value={edu.start_date}
                         onChange={(e) => updateEducation(index, 'start_date', e.target.value)}
-                        className="bg-slate-900 border-slate-700 text-white"
+                        className={`bg-slate-900 text-white ${
+                          !edu.start_date ? 'border-red-500/50' : 'border-slate-700'
+                        }`}
                         disabled={loading}
                       />
                     </div>
                     <div>
-                      <Label className="text-slate-300">End Date</Label>
+                      <Label className="text-slate-300">
+                        End Date {!edu.is_current && <span className="text-red-400">*</span>}
+                      </Label>
                       <Input
                         type="date"
                         value={edu.end_date}
                         onChange={(e) => updateEducation(index, 'end_date', e.target.value)}
-                        className="bg-slate-900 border-slate-700 text-white"
+                        className={`bg-slate-900 text-white ${
+                          !edu.is_current && !edu.end_date ? 'border-red-500/50' : 'border-slate-700'
+                        }`}
                         disabled={edu.is_current || loading}
                       />
                     </div>
@@ -612,24 +667,32 @@ export function ProfileReviewModal({ open, onOpenChange, parsedData, userId, res
                       </Select>
                     </div>
                     <div>
-                      <Label className="text-slate-300">Start Date</Label>
+                      <Label className="text-slate-300">
+                        Start Date <span className="text-red-400">*</span>
+                      </Label>
                       <Input
                         type="date"
                         value={exp.start_date}
                         onChange={(e) => updateExperience(index, 'start_date', e.target.value)}
-                        className="bg-slate-900 border-slate-700 text-white"
+                        className={`bg-slate-900 text-white ${
+                          !exp.start_date ? 'border-red-500/50' : 'border-slate-700'
+                        }`}
                         disabled={loading}
                       />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <Label className="text-slate-300">End Date</Label>
+                      <Label className="text-slate-300">
+                        End Date {!exp.is_current && <span className="text-red-400">*</span>}
+                      </Label>
                       <Input
                         type="date"
                         value={exp.end_date}
                         onChange={(e) => updateExperience(index, 'end_date', e.target.value)}
-                        className="bg-slate-900 border-slate-700 text-white"
+                        className={`bg-slate-900 text-white ${
+                          !exp.is_current && !exp.end_date ? 'border-red-500/50' : 'border-slate-700'
+                        }`}
                         disabled={exp.is_current || loading}
                       />
                     </div>

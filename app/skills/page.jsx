@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -27,19 +27,14 @@ import {
 
 export default function Skills() {
   const { user } = useAuth();
-  const [skillsData, setSkillsData] = useState({ strengths: [], gaps: [], radarData: [] });
+  const [skillsData, setSkillsData] = useState({ strengths: [], gaps: [], radarData: [], atsReport: null });
   const [loading, setLoading] = useState(true);
   const [newSkill, setNewSkill] = useState('');
   const [newProficiency, setNewProficiency] = useState('beginner');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  useEffect(() => {
-    if (user?.user_id) {
-      loadSkills();
-    }
-  }, [user]);
-
-  const loadSkills = async () => {
+  const loadSkills = useCallback(async () => {
+    setLoading(true);
     try {
       const data = await api.getSkills(user.user_id);
       setSkillsData(data);
@@ -48,7 +43,13 @@ export default function Skills() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.user_id]);
+
+  useEffect(() => {
+    if (user?.user_id) {
+      loadSkills();
+    }
+  }, [user, loadSkills]);
 
   const handleAddSkill = async () => {
     if (!newSkill || !user?.user_id) return;
@@ -56,7 +57,7 @@ export default function Skills() {
       await api.addSkill(user.user_id, newSkill, newProficiency);
       setNewSkill('');
       setIsDialogOpen(false);
-      loadSkills(); // Reload to show new skill
+      loadSkills(); // Reload to show new skill and refresh view
     } catch (error) {
       console.error('Error adding skill:', error);
       alert(error.message);
@@ -85,6 +86,24 @@ export default function Skills() {
         return 'bg-slate-500/20 text-slate-400 border-slate-500/30';
     }
   };
+
+  const sanitizeText = (text) =>
+    (text || '')
+      .replace(/\*\*/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+  const atsGaps = skillsData.atsReport?.gaps?.map(sanitizeText).filter(Boolean) || [];
+  const gapItems = atsGaps.length > 0 ? atsGaps : skillsData.gaps;
+
+  const atsRecs = skillsData.atsReport?.recommendations?.map(sanitizeText).filter(Boolean) || [];
+  const recommendations = atsRecs.length > 0
+    ? atsRecs
+    : [
+      'Focus on high-priority skills first to maximize career impact',
+      'Dedicate 5-10 hours per week to skill development',
+      'Apply new skills through hands-on projects and real-world scenarios',
+    ];
 
   if (loading) {
     return (
@@ -243,10 +262,10 @@ export default function Skills() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {skillsData.gaps.length > 0 ? (
-              skillsData.gaps.map((gap, index) => (
+            {gapItems.length > 0 ? (
+              gapItems.map((gap, index) => (
                 <Card
-                  key={gap.id}
+                  key={index}
                   className="glass-card p-6 hover:scale-105 transition-all duration-300 group hover:shadow-xl hover:shadow-yellow-500/10"
                   style={{
                     animation: `fadeInUp 0.5s ease-out ${index * 0.1}s both`,
@@ -255,46 +274,17 @@ export default function Skills() {
                   <div className="space-y-4">
                     <div className="flex items-start justify-between">
                       <h3 className="text-lg font-semibold text-white group-hover:text-yellow-400 transition-colors">
-                        {gap.name}
+                        {typeof gap === 'string' ? gap : gap.name}
                       </h3>
-                      <Badge className={getPriorityColor(gap.priority)}>
-                        {gap.priority}
-                      </Badge>
+                      {typeof gap === 'object' && gap.priority && (
+                        <Badge className={getPriorityColor(gap.priority)}>
+                          {gap.priority}
+                        </Badge>
+                      )}
                     </div>
 
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-slate-400">Current</span>
-                        <span className="text-red-400 font-semibold">{gap.current}%</span>
-                      </div>
-                      <div className="relative h-2 bg-slate-800 rounded-full overflow-hidden">
-                        <div
-                          className="absolute top-0 left-0 h-full bg-red-500 rounded-full transition-all duration-1000 ease-out"
-                          style={{ width: `${gap.current}%` }}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-slate-400">Target</span>
-                        <span className="text-green-400 font-semibold">{gap.target}%</span>
-                      </div>
-                      <div className="relative h-2 bg-slate-800 rounded-full overflow-hidden">
-                        <div
-                          className="absolute top-0 left-0 h-full bg-green-500 rounded-full transition-all duration-1000 ease-out"
-                          style={{ width: `${gap.target}%` }}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="pt-4 border-t border-yellow-500/20">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-slate-400">Gap to Close</span>
-                        <span className="text-yellow-400 font-bold">
-                          {gap.target - gap.current}%
-                        </span>
-                      </div>
+                    <div className="space-y-2 text-slate-300 text-sm">
+                      {typeof gap === 'object' && gap.description ? gap.description : 'Focus on closing this gap with targeted practice and learning.'}
                     </div>
                   </div>
                 </Card>
@@ -312,18 +302,12 @@ export default function Skills() {
               <div className="flex-1">
                 <h3 className="text-lg font-semibold text-white mb-2">Recommended Action Plan</h3>
                 <ul className="space-y-2 text-slate-300">
-                  <li className="flex items-center space-x-2">
-                    <span className="w-1.5 h-1.5 bg-yellow-400 rounded-full" />
-                    <span>Focus on high-priority skills first to maximize career impact</span>
-                  </li>
-                  <li className="flex items-center space-x-2">
-                    <span className="w-1.5 h-1.5 bg-yellow-400 rounded-full" />
-                    <span>Dedicate 5-10 hours per week to skill development</span>
-                  </li>
-                  <li className="flex items-center space-x-2">
-                    <span className="w-1.5 h-1.5 bg-yellow-400 rounded-full" />
-                    <span>Apply new skills through hands-on projects and real-world scenarios</span>
-                  </li>
+                  {recommendations.map((rec, idx) => (
+                    <li key={idx} className="flex items-center space-x-2">
+                      <span className="w-1.5 h-1.5 bg-yellow-400 rounded-full" />
+                      <span>{rec}</span>
+                    </li>
+                  ))}
                 </ul>
               </div>
             </div>

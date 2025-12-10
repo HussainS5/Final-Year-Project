@@ -36,6 +36,15 @@ router.post('/', async (req, res) => {
       });
     }
 
+    // Set end_date to today if it's null, undefined, string "null", or if is_current is true
+    const today = new Date().toISOString().split('T')[0];
+    let endDateValue;
+    if (is_current || !end_date || end_date === 'null' || end_date === null) {
+      endDateValue = today;
+    } else {
+      endDateValue = end_date;
+    }
+
     const result = await db.query(
       `INSERT INTO work_experience (user_id, job_title, company_name, employment_type, 
                                     start_date, end_date, is_current, description)
@@ -47,7 +56,7 @@ router.post('/', async (req, res) => {
         company_name,
         employment_type || 'full_time',
         start_date,
-        end_date || null,
+        endDateValue,
         is_current || false,
         description || null,
       ]

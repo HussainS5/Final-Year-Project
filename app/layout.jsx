@@ -10,6 +10,9 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata = {
   title: 'NextGenAI - AI Career Platform',
   description: 'Modern AI-powered career platform for job recommendations and skill development',
+  icons: {
+    icon: '/icon.svg',
+  },
 };
 
 export default function RootLayout({ children }) {
