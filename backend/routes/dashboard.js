@@ -149,8 +149,172 @@ router.get('/:userId', async (req, res) => {
             recommendedJobs.sort((a, b) => b.match_score - a.match_score);
         }
 
+        // Fetch skill gaps
+        const gapsRes = await db.query(`
+            SELECT sg.*, sc.skill_name
+            FROM skill_gaps sg
+            JOIN skills_catalog sc ON sg.skill_id = sc.skill_id
+            WHERE sg.user_id = $1 AND sg.is_resolved = FALSE
+            ORDER BY sg.priority_score DESC, sg.gap_severity DESC
+            LIMIT 10
+        `, [userId]);
+
+        // Fetch learning paths and progress
+        const learningPathsRes = await db.query(`
+            SELECT lp.*, 
+                   COUNT(lm.module_id) as total_modules,
+                   COUNT(CASE WHEN lm.status = 'completed' THEN 1 END) as completed_modules
+            FROM learning_paths lp
+            LEFT JOIN learning_modules lm ON lp.path_id = lm.path_id
+            WHERE lp.user_id = $1
+            GROUP BY lp.path_id
+            ORDER BY lp.created_at DESC
+            LIMIT 5
+        `, [userId]);
+
+        // Fetch applications with details
+        const applicationsRes = await db.query(`
+            SELECT a.*,
+                   CASE 
+                       WHEN a.application_type = 'job' THEN jp.job_title
+                       ELSE o.title
+                   END as title,
+                   CASE 
+                       WHEN a.application_type = 'job' THEN jp.company_name
+                       ELSE o.organization_name
+                   END as organization
+            FROM applications a
+            LEFT JOIN job_postings jp ON a.application_type = 'job' AND a.entity_id = jp.job_id
+            LEFT JOIN opportunities o ON a.application_type IN ('scholarship', 'admission') AND a.entity_id = o.opportunity_id
+            WHERE a.user_id = $1
+            ORDER BY a.applied_date DESC
+            LIMIT 10
+        `, [userId]);
+
+        // Fetch ATS report (latest)
+        const atsRes = await db.query(`
+            SELECT score, summary, strengths, gaps, recommendations, keywords_to_add, breakdown, created_at
+            FROM ats_reports
+            WHERE user_id = $1
+            ORDER BY created_at DESC
+            LIMIT 1
+        `, [userId]);
+
+        // Fetch user skills with details for charts
+        const userSkillsDetailedRes = await db.query(`
+            SELECT us.proficiency_level, us.years_of_experience, sc.skill_name, sc.skill_category
+            FROM user_skills us
+            JOIN skills_catalog sc ON us.skill_id = sc.skill_id
+            WHERE us.user_id = $1
+            ORDER BY us.proficiency_level DESC
+        `, [userId]);
+
+        // Calculate profile completion breakdown
+        const profileBreakdown = {
+            basicInfo: 0,
+            education: 0,
+            experience: 0,
+            skills: 0
+        };
+        
+        // Basic info (30 points)
+        if (user.first_name) profileBreakdown.basicInfo += 7.5;
+        if (user.last_name) profileBreakdown.basicInfo += 7.5;
+        if (user.email) profileBreakdown.basicInfo += 5;
+        if (user.phone_number) profileBreakdown.basicInfo += 5;
+        if (user.bio) profileBreakdown.basicInfo += 2.5;
+        if (user.profile_picture_url) profileBreakdown.basicInfo += 2.5;
+        
+        // Education (25 points)
+        if (eduRes.rows.length > 0) profileBreakdown.education = 25;
+        
+        // Experience (25 points)
+        if (expRes.rows.length > 0) profileBreakdown.experience = 25;
+        
+        // Skills (20 points)
+        if (skillsRes.rows.length > 0) profileBreakdown.skills = Math.min(20, (skillsRes.rows.length / 5) * 20);
+
+        // Format skill gaps
+        const skillGaps = gapsRes.rows.map(gap => ({
+            id: gap.gap_id,
+            skillName: gap.skill_name,
+            currentLevel: gap.current_level,
+            targetLevel: gap.target_level,
+            severity: gap.gap_severity,
+            priorityScore: gap.priority_score
+        }));
+
+        // Format learning paths
+        const learningPaths = learningPathsRes.rows.map(path => ({
+            id: path.path_id,
+            name: path.path_name,
+            targetRole: path.target_role,
+            status: path.status,
+            completionPercentage: parseFloat(path.completion_percentage) || 0,
+            totalModules: parseInt(path.total_modules) || 0,
+            completedModules: parseInt(path.completed_modules) || 0
+        }));
+
+        // Format applications
+        const applications = applicationsRes.rows.map(app => ({
+            id: app.application_id,
+            entityId: app.entity_id,
+            type: app.application_type,
+            title: app.title,
+            organization: app.organization,
+            status: app.status,
+            appliedDate: app.applied_date
+        }));
+
+        // Format ATS data
+        let atsData = null;
+        if (atsRes.rows.length > 0) {
+            const ats = atsRes.rows[0];
+            const parseJsonb = (val) => {
+                if (Array.isArray(val)) return val;
+                try {
+                    return typeof val === 'string' ? JSON.parse(val) : val;
+                } catch {
+                    return [];
+                }
+            };
+            
+            atsData = {
+                score: parseFloat(ats.score) || 0,
+                summary: ats.summary || '',
+                strengths: parseJsonb(ats.strengths),
+                gaps: parseJsonb(ats.gaps),
+                recommendations: parseJsonb(ats.recommendations),
+                keywordsToAdd: parseJsonb(ats.keywords_to_add),
+                breakdown: ats.breakdown || {},
+                createdAt: ats.created_at
+            };
+        }
+
+        // Skills distribution for charts
+        const skillsByCategory = {};
+        const skillsByProficiency = {};
+        userSkillsDetailedRes.rows.forEach(skill => {
+            const category = skill.skill_category || 'other';
+            skillsByCategory[category] = (skillsByCategory[category] || 0) + 1;
+            
+            const proficiency = skill.proficiency_level || 'beginner';
+            skillsByProficiency[proficiency] = (skillsByProficiency[proficiency] || 0) + 1;
+        });
+
         const dashboardData = {
+            user: {
+                userId: user.user_id,
+                firstName: user.first_name,
+                lastName: user.last_name,
+                email: user.email,
+                fullName: `${user.first_name} ${user.last_name}`,
+                currentCity: user.current_city,
+                bio: user.bio,
+                profilePictureUrl: user.profile_picture_url
+            },
             profileStrength,
+            profileBreakdown,
             activeApplications,
             interviewsScheduled,
             matchRanking,
@@ -189,7 +353,15 @@ router.get('/:userId', async (req, res) => {
                     requiredSkills: requiredSkills,
                     matchScore: Math.round((job.match_score || 0.5) * 100)
                 };
-            })
+            }),
+            skillGaps,
+            learningPaths,
+            applications,
+            atsData,
+            skillsDistribution: {
+                byCategory: skillsByCategory,
+                byProficiency: skillsByProficiency
+            }
         };
 
         console.log('Dashboard data:', dashboardData);
