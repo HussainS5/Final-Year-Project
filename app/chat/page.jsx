@@ -17,6 +17,23 @@ export default function Chat() {
   const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef(null);
 
+  // Function to clean markdown formatting from text
+  const cleanMarkdown = (text) => {
+    if (!text) return '';
+    return text
+      .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold **text**
+      .replace(/\*(.*?)\*/g, '$1') // Remove italic *text* (but not **)
+      .replace(/_{2}(.*?)_{2}/g, '$1') // Remove bold __text__
+      .replace(/_(.*?)_/g, '$1') // Remove italic _text_
+      .replace(/#{1,6}\s*(.*)/g, '$1') // Remove headers # ## ###
+      .replace(/\[(.*?)\]\(.*?\)/g, '$1') // Remove links [text](url) -> text
+      .replace(/`(.*?)`/g, '$1') // Remove inline code `code`
+      .replace(/```[\s\S]*?```/g, '') // Remove code blocks
+      .replace(/---+/g, '') // Remove horizontal rules
+      .replace(/\n{3,}/g, '\n\n') // Replace multiple newlines with double
+      .trim();
+  };
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -36,11 +53,11 @@ export default function Chat() {
     try {
       const history = await api.getChatHistory(user.user_id);
       if (history.messages && history.messages.length > 0) {
-        // Convert timestamps to Date objects
+        // Convert timestamps to Date objects and clean markdown
         const formattedMessages = history.messages.map((msg, idx) => ({
           id: idx + 1,
           role: msg.role,
-          content: msg.content,
+          content: msg.role === 'assistant' ? cleanMarkdown(msg.content) : msg.content,
           timestamp: new Date(msg.timestamp),
         }));
         setMessages(formattedMessages);
@@ -79,7 +96,7 @@ export default function Chat() {
       const assistantMessage = {
         id: messages.length + 2,
         role: 'assistant',
-        content: response.assistantMessage.content,
+        content: cleanMarkdown(response.assistantMessage.content),
         timestamp: new Date(response.assistantMessage.timestamp),
       };
 
@@ -229,7 +246,7 @@ export default function Chat() {
                       }`}
                     >
                       <p className="text-slate-100 leading-relaxed whitespace-pre-wrap">
-                        {message.content}
+                        {message.role === 'assistant' ? cleanMarkdown(message.content) : message.content}
                       </p>
                       <p className="text-xs text-slate-500 mt-2">
                         {message.timestamp.toLocaleTimeString([], {
