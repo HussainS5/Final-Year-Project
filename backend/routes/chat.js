@@ -113,7 +113,24 @@ router.post('/:userId', async (req, res) => {
             contextPrompt += `About them: ${user.bio}. `;
         }
         
-        contextPrompt += `Provide helpful, professional, and encouraging career advice. Be concise but informative.`;
+        contextPrompt += `Provide helpful, professional, and encouraging career advice. Be concise but informative. IMPORTANT: Do NOT use any markdown formatting in your response. No asterisks (*), underscores (_), hash symbols (#), or any other markdown characters. Use plain text only.`;
+
+        // Helper function to clean markdown formatting
+        const cleanMarkdown = (text) => {
+            if (!text) return '';
+            return text
+                .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold **text**
+                .replace(/\*(.*?)\*/g, '$1') // Remove italic *text* (but not **)
+                .replace(/_{2}(.*?)_{2}/g, '$1') // Remove bold __text__
+                .replace(/_(.*?)_/g, '$1') // Remove italic _text_
+                .replace(/#{1,6}\s*(.*)/g, '$1') // Remove headers # ## ###
+                .replace(/\[(.*?)\]\(.*?\)/g, '$1') // Remove links [text](url) -> text
+                .replace(/`(.*?)`/g, '$1') // Remove inline code `code`
+                .replace(/```[\s\S]*?```/g, '') // Remove code blocks
+                .replace(/---+/g, '') // Remove horizontal rules
+                .replace(/\n{3,}/g, '\n\n') // Replace multiple newlines with double
+                .trim();
+        };
 
         console.log('=== GEMINI API DEBUG ===');
         console.log('API Key being used:', apiKey ? `${apiKey.substring(0, 15)}...${apiKey.substring(apiKey.length - 5)}` : 'NOT FOUND');
@@ -124,13 +141,16 @@ router.post('/:userId', async (req, res) => {
         // For first message or simple conversation
         const fullPrompt = existingMessages.length <= 1 
             ? `${contextPrompt}\n\nUser's question: ${message}`
-            : message;
+            : `${contextPrompt}\n\nUser's question: ${message}`;
 
         console.log('Prompt length:', fullPrompt.length);
         
         const result = await model.generateContent(fullPrompt);
         const response = await result.response;
-        const aiResponse = response.text();
+        let aiResponse = response.text();
+        
+        // Clean markdown formatting from response
+        aiResponse = cleanMarkdown(aiResponse);
 
         console.log('AI Response received successfully');
         console.log('Response preview:', aiResponse.substring(0, 100) + '...');
